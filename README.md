@@ -113,7 +113,34 @@ except ImportError:
     _hashlib = None
 ```
 
-A second configuration (full standard library, 604 files, 11.07 M chars; batch 512; bfloat16 autocast via `--amp`) is reported below when it finishes.
+### Run 2: full standard library, larger batch, bf16
+
+Same model, `--batch-size 512 --amp` (bfloat16 autocast), on the whole standard library minus tests, idlelib, lib2to3 and site-packages: 604 files, 11,068,900 characters, 278-character vocabulary, 3,367,702 parameters, 3 epochs, seed 1337.
+
+```bash
+python train.py --data dataset_full.txt --epochs 3 --batch-size 512 --amp --seed 1337
+```
+
+| epoch | train loss | val loss | time | throughput |
+|---|---|---|---|---|
+| 1 | 0.702 | **0.929** | 52.4 min | 813 k tok/s |
+| 2 | 0.551 | 0.951 | 52.4 min | 813 k tok/s |
+| 3 | 0.524 | 0.967 | 52.4 min | 813 k tok/s |
+
+Best validation loss **0.929 nats/char** (epoch 1), 2 h 37 min total, 11.6 GB GPU memory. Throughput only rose 1.5× despite the 8× larger batch and bf16, because the per-sample Python `DataLoader` (no workers, one tensor slice per item) is the bottleneck, not the GPU. More data lowered the validation loss from 1.34 to 0.93; again the best epoch is the first.
+
+![loss curve, run 2](docs/loss_curve_run2.png)
+
+Run 2 sample at temperature 0.8 ([`docs/samples_run2.md`](docs/samples_run2.md)):
+
+```
+def __init__(self, x, y):
+        self.x = x
+
+    def __exit__(self, type, value, tb):
+        self.traceback = traceback
+        self.curframe = {}
+```
 
 ## Tests
 

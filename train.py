@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import time
 
@@ -35,6 +36,9 @@ class CharDataset(Dataset):
 def train(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    if device.type == "cuda":
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+    torch.manual_seed(args.seed)
 
     # Load text
     with open(args.data, "r", encoding="utf-8") as f:
@@ -83,6 +87,7 @@ def train(args: argparse.Namespace) -> None:
 
     best_val_loss = float("inf")
     os.makedirs(args.save_dir, exist_ok=True)
+    history = []
 
     for epoch in range(1, args.epochs + 1):
         # --- Training ---
@@ -107,6 +112,7 @@ def train(args: argparse.Namespace) -> None:
         scheduler.step()
         avg_train_loss = train_loss_sum / max(train_steps, 1)
         elapsed = time.time() - t0
+        tokens_per_sec = train_steps * args.batch_size * args.block_size / max(elapsed, 1e-9)
 
         # --- Validation ---
         model.eval()
@@ -127,8 +133,15 @@ def train(args: argparse.Namespace) -> None:
             f"train_loss={avg_train_loss:.4f} | "
             f"val_loss={avg_val_loss:.4f} | "
             f"lr={scheduler.get_last_lr()[0]:.2e} | "
-            f"{elapsed:.1f}s"
+            f"{elapsed:.1f}s | {tokens_per_sec:,.0f} tok/s"
         )
+        history.append({"epoch": epoch, "train_loss": avg_train_loss, "val_loss": avg_val_loss,
+                        "seconds": elapsed, "tokens_per_sec": tokens_per_sec})
+        with open(os.path.join(args.save_dir, "history.json"), "w") as f:
+            json.dump({"args": vars(args), "device": str(device),
+                       "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
+                       "params": param_count, "vocab_size": tokenizer.vocab_size,
+                       "dataset_chars": len(text), "history": history}, f, indent=1)
 
         # Save best model
         if avg_val_loss < best_val_loss:
@@ -169,6 +182,7 @@ def main():
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=0.01)
     parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--seed", type=int, default=1337, help="random seed for weight init and batch order")
     args = parser.parse_args()
 
     train(args)

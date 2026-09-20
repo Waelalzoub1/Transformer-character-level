@@ -100,7 +100,8 @@ def train(args: argparse.Namespace) -> None:
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
 
-            _, loss = model(batch_x, batch_y)
+            with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=args.amp):
+                _, loss = model(batch_x, batch_y)
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -183,6 +184,7 @@ def main():
     parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=0.01)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=1337, help="random seed for weight init and batch order")
+    parser.add_argument("--amp", action="store_true", help="bfloat16 autocast for forward/backward (CUDA)")
     args = parser.parse_args()
 
     train(args)

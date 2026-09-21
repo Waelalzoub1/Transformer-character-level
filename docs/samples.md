@@ -1,56 +1,56 @@
 # Samples
 
-Generated with `inference.py` from `best_model.pt` (epoch 1, val loss 1.336), temperature 0.8, top-k 50, 400 characters each, `torch.manual_seed(1337)`.
+Generated with `inference.py` from the best checkpoint (step 15,000, held-out loss 0.871 nats/char), temperature 0.8, top-k 50, 400 characters each, `torch.manual_seed(1337)`, prompts `def `, `class `, `import `.
 
 ```
-PROMPT: 'def '
-def __init__(self, x, *bases):
-        self.x = x
-        self.set_seqs(x, level)
+def __init__(self, message=None, **kw):
+        self.message = message
+        self._check(f'process Failed exec')
+        self._check("process")
+        self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                },
+                self.__args__
+            )
 
-    # String representation for details.
-    # There is no before they since in which case they were in the level
-    # described in example or a field.
-    text = getattr(self, '_field_type', fIELD, fIELD)
-
-    # Rename and rename the environment. If that we don't replace
-    # a field name, and exist we're already tha
-```
-
-```
-PROMPT: 'class '
-class is an implementation for pickle module.
-# It's "import readline in the Python distribution, up Imports a Python software
-# readline() and immodule can avoid in this function.
-def importlib.machinery(pickle):
-    pager = 'row'
-    pager = get_pager()
-
-    if not depending and importlib._bootstrap_external.SourceFileLoader:
-        raise ValueError('Cannot set paged at least one depending')
-    retu
+    def __eq__(self, other):
+        if isins
 ```
 
 ```
-PROMPT: 'import '
+class is an implementation of module detail.
+        """
+        module = self._get_module_cached()
+        fullmodule = self._testModuleFullmodule(fullmodule, path, fullmodule,
+                                                         encoding=encoding, errors=errors)
+            if module is None:
+                return module
+            else:
+                self._base_external_encoding = encoding
+```
+
+```
 import errno
-import sys
+from enum import errno
+
+from . import errno
 
 
-try:
-    from _ssl import functools import _ssl
-except ImportError:
-    _hashlib = None
-else:
-    _hashlib = None
+if __name__ == '__main__':
+    print("Errors", errno.ENOSUBPROCESSIBLE}.symbols()
 
 
-def _init(file, file, flags, output=None):
-    """Return a stream object of the file.
+# FILE: asyncio/testmodule.py
+"""Test tests in test*
 
-    This is a flag if bound method is instantiated fields.
+Tests instances to os.getmodules(), looking as a specific tests reasonable.
 
-    The file and descriptors are the descriptor descriptor.  However, the
-    parameter has the same through for use o
+A dname support.
+"""
+
+__all__ = ['ProtocolModule', 'Cleanup', 'ProtocolModule', 'ProtocolModule', 'ProtocolModule',
+           'Reado
 ```
 

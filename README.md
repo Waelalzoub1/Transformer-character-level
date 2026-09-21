@@ -20,35 +20,36 @@ pip install -r requirements.txt
 
 ### 1. Prepare training data
 
-Collect all `.py` files from a directory into a single text file:
+Collect all `.py` files from a directory into text files, holding out 10 % of the FILES for validation:
 
 ```bash
-python prepare_data.py /path/to/python/code -o dataset.txt
+python prepare_data.py /path/to/python/code -o data.txt --val-fraction 0.1
+# writes data_train.txt and data_val.txt; no file contributes to both
 ```
 
 ### 2. Train the model
 
 ```bash
-python train.py --data dataset.txt
+python train.py --train data_train.txt --val data_val.txt
 ```
 
-Training options:
+Training is step based: every step draws a batch of random 256-character crops from the training text; every `--eval-interval` steps the loss is measured on the whole held-out set (non-overlapping windows), and `checkpoints/best_model.pt` is written whenever that loss improves.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--epochs` | 50 | Number of training epochs |
-| `--seed` | 1337 | Random seed |
-| `--amp` | off | bfloat16 autocast on CUDA |
-| `--batch-size` | 64 | Batch size |
+| `--max-steps` | 20000 | Training steps |
+| `--eval-interval` | 1000 | Steps between evaluations on the held-out set |
+| `--batch-size` | 64 | Crops per step |
 | `--block-size` | 256 | Context window (characters) |
 | `--d-model` | 256 | Embedding / hidden dimension |
 | `--n-heads` | 4 | Number of attention heads |
 | `--n-layers` | 4 | Number of transformer blocks |
-| `--lr` | 3e-4 | Learning rate |
+| `--lr` / `--min-lr` | 3e-4 / 3e-5 | Peak and final learning rate (linear warmup, cosine decay) |
+| `--warmup-steps` | 200 | Warmup length |
 | `--dropout` | 0.1 | Dropout rate |
-| `--save-dir` | `checkpoints/` | Where to save model checkpoints |
-
-The best model (by validation loss) is saved to `checkpoints/best_model.pt`.
+| `--seed` | 1337 | Random seed |
+| `--amp` | off | bfloat16 autocast on CUDA |
+| `--save-dir` | `checkpoints/` | Best checkpoint and `history.json` |
 
 ### 3. Generate text
 
@@ -74,73 +75,45 @@ Generation options:
 
 ## Results
 
-Trained on this machine's CPython 3.14.6 standard library: the 154 top-level `Lib/*.py` modules, 4,723,742 characters, 180-character vocabulary, built with `prepare_data.py`. Hardware: one NVIDIA GeForce RTX 5080 (16 GB). Default configuration (4 layers, 4 heads, d_model 256, context 256, batch 64, AdamW 3e-4 with cosine decay, dropout 0.1), `--seed 1337`, **3 epochs instead of the default 50**: one epoch is 66,474 steps and takes 33 minutes, so 50 would take about 28 hours.
+Data: the CPython 3.14.6 standard library on the training machine, every `.py` file except tests, idlelib, lib2to3 and site-packages: 604 files, 11.07 M characters, 278-character vocabulary. Split by file with `--val-fraction 0.1 --seed 0`: 544 files (9,592,127 chars) for training, 60 files (1,494,617 chars) held out.
 
 ```bash
-python prepare_data.py /usr/lib/python3.14 -o dataset.txt      # after copying the top-level .py files into a directory
-python train.py --data dataset.txt --epochs 3 --seed 1337
+python prepare_data.py stdlib/ -o stdlib.txt --val-fraction 0.1 --seed 0
+python train.py --train stdlib_train.txt --val stdlib_val.txt --max-steps 40000 --batch-size 256 --amp --seed 1337
 ```
 
-| epoch | train loss | val loss | time | throughput |
-|---|---|---|---|---|
-| 1 | 0.630 | **1.336** | 32.9 min | 552 k tok/s |
-| 2 | 0.486 | 1.412 | 32.6 min | 556 k tok/s |
-| 3 | 0.444 | 1.476 | 31.9 min | 570 k tok/s |
+Model: the default 4 layers, 4 heads, d_model 256, context 256; **3,367,702 parameters**. Hardware: one NVIDIA GeForce RTX 5080 (16 GB), bfloat16 autocast, 85 minutes for 40,000 steps while sharing the GPU with another job (about 750 k tokens/s when it had the GPU to itself).
 
-Parameters: **3,317,428**. Best validation loss **1.336 nats/char** (epoch 1), 97 minutes total. Peak GPU memory about 3 GB.
+| step | train loss | held-out loss (nats/char) | bits/char |
+|---|---|---|---|
+| 1,000 | 1.840 | 1.1447 | 1.651 |
+| 2,000 | 0.969 | 0.9859 | 1.422 |
+| 5,000 | 0.746 | 0.9006 | 1.299 |
+| 10,000 | 0.656 | 0.8748 | 1.262 |
+| **15,000** | 0.616 | **0.8709** | **1.256** |
+| 20,000 | 0.591 | 0.8710 | 1.257 |
+| 30,000 | 0.563 | 0.8793 | 1.269 |
+| 40,000 | 0.553 | 0.8802 | 1.270 |
+
+**Minimum held-out loss: 0.871 nats/char = 1.256 bits/char at step 15,000** (the saved checkpoint). After that the training loss keeps falling while the held-out loss drifts up: a 3.4 M-parameter model has started to memorise 9.6 M characters.
 
 ![loss curve](docs/loss_curve.png)
 
-The train/val gap opens immediately: every character offset is a training sample, so each 256-character window is seen many times per epoch, and the validation slice is the last 10 % of the alphabetically ordered files. Validation loss rises after epoch 1; more data helps more than more epochs.
-
-Samples at temperature 0.8 (top-k 50), full text in [`docs/samples.md`](docs/samples.md):
+Samples from the best checkpoint at temperature 0.8, top-k 50 (more in [`docs/samples.md`](docs/samples.md)):
 
 ```
-def __init__(self, x, *bases):
-        self.x = x
-        self.set_seqs(x, level)
-
-    # String representation for details.
-```
-```
-import errno
-import sys
-
-
-try:
-    from _ssl import functools import _ssl
-except ImportError:
-    _hashlib = None
+def __init__(self, message=None, **kw):
+        self.message = message
+        self._check(f'process Failed exec')
+        self._check("process")
+        self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                },
 ```
 
-### Run 2: full standard library, larger batch, bf16
-
-Same model, `--batch-size 512 --amp` (bfloat16 autocast), on the whole standard library minus tests, idlelib, lib2to3 and site-packages: 604 files, 11,068,900 characters, 278-character vocabulary, 3,367,702 parameters, 3 epochs, seed 1337.
-
-```bash
-python train.py --data dataset_full.txt --epochs 3 --batch-size 512 --amp --seed 1337
-```
-
-| epoch | train loss | val loss | time | throughput |
-|---|---|---|---|---|
-| 1 | 0.702 | **0.929** | 52.4 min | 813 k tok/s |
-| 2 | 0.551 | 0.951 | 52.4 min | 813 k tok/s |
-| 3 | 0.524 | 0.967 | 52.4 min | 813 k tok/s |
-
-Best validation loss **0.929 nats/char** (epoch 1), 2 h 37 min total, 11.6 GB GPU memory. Throughput only rose 1.5× despite the 8× larger batch and bf16, because the per-sample Python `DataLoader` (no workers, one tensor slice per item) is the bottleneck, not the GPU. More data lowered the validation loss from 1.34 to 0.93; again the best epoch is the first.
-
-![loss curve, run 2](docs/loss_curve_run2.png)
-
-Run 2 sample at temperature 0.8 ([`docs/samples_run2.md`](docs/samples_run2.md)):
-
-```
-def __init__(self, x, y):
-        self.x = x
-
-    def __exit__(self, type, value, tb):
-        self.traceback = traceback
-        self.curframe = {}
-```
+Earlier revisions of this repository trained by epoch over every character offset with the last 10 % of the concatenated text as validation. Those runs reported 1.336 (4.7 M-char subset) and 0.929 nats/char (full stdlib), both at the end of their first epoch. They are not comparable with the numbers above: the split was by position rather than by file, and evaluation happened only once per epoch, so the true minimum was never observed.
 
 ## Tests
 

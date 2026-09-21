@@ -67,7 +67,7 @@ def load_model(checkpoint_path: str, device: torch.device) -> tuple[CharTransfor
 
     epoch = checkpoint.get("epoch", "?")
     val_loss = checkpoint.get("val_loss", "?")
-    print(f"Loaded model from epoch {epoch} (val_loss={val_loss})")
+    print(f"Loaded model from step {epoch} (val_loss={val_loss})")
     print(f"Vocab size: {tokenizer.vocab_size} | Block size: {config['block_size']}")
 
     return model, tokenizer

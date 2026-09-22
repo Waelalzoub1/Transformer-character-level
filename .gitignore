@@ -7,7 +7,7 @@ build/
 .eggs/
 
 # Training artifacts
-checkpoints/
+checkpoints/*
 dataset.txt
 *.pt
 
@@ -26,3 +26,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# the trained model is shipped
+!checkpoints/stdlib_best.pt

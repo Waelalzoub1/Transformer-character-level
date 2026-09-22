@@ -16,6 +16,20 @@ Part of a "transistors to transformers" body of work; see also [mini-os32](https
 pip install -r requirements.txt
 ```
 
+## Use the trained model
+
+The checkpoint from the run described under Results is included as `checkpoints/stdlib_best.pt` (13 MB). `generate.py` streams a completion character by character:
+
+```bash
+pip install -r requirements.txt
+python generate.py "def fibonacci(n):"          # complete a prompt
+python generate.py --file mymodule.py           # continue from the end of a file
+python generate.py                              # interactive: type prompts, get completions
+python generate.py "class Stack:" --temperature 0.5 --max-tokens 800 --seed 1
+```
+
+`--temperature` below 1 makes it more conservative (0 = always the most likely character), `--top-k` limits sampling to the K most likely characters, `--max-tokens` sets the completion length. Only the last 256 characters of a prompt are used as context. Expect Python-shaped text with correct indentation and plausible names, not working programs: this is a 3.4 M-parameter character model.
+
 ## Usage
 
 ### 1. Prepare training data
